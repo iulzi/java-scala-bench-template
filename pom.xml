@@ -1,0 +1,243 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>org.example</groupId>
+  <artifactId>java-scala-bench-template</artifactId>
+  <version>1.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>java-scala-bench-template</name>
+  <url>http://maven.apache.org</url>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <java.version>21</java.version>
+    <junit.version>5.13.4</junit.version>
+
+    <scala.version>3.7.2</scala.version>
+    <scalatest.version>3.2.19</scalatest.version>
+
+    <jmh.version>1.37</jmh.version>
+    <jmh.generator>default</jmh.generator>
+    <jmh.jar.name>benchmarks</jmh.jar.name>
+
+    <scala.mavenPlugin.version>4.9.5</scala.mavenPlugin.version>
+    <surefire.mavenPlugin.version>3.5.3</surefire.mavenPlugin.version>
+    <scalatest.mavenPlugin.version>2.2.0</scalatest.mavenPlugin.version>
+    <builderHelper.mavenPlugin.version>3.6.1</builderHelper.mavenPlugin.version>
+    <exec.mavenPlugin.version>3.5.1</exec.mavenPlugin.version>
+    <compiler.mavenPlugin.version>3.14.0</compiler.mavenPlugin.version>
+    <shade.mavenPlugin.version>3.6.0</shade.mavenPlugin.version>
+    <versions.mevenPlugin.version>2.18.0</versions.mevenPlugin.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.scala-lang</groupId>
+      <artifactId>scala3-library_3</artifactId>
+      <version>${scala.version}</version>
+    </dependency>
+<!--    JMH  dependency -->
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-core</artifactId>
+      <version>${jmh.version}</version>
+    </dependency>
+<!--    Test dependencies -->
+    <dependency>
+      <groupId>org.scalatest</groupId>
+      <artifactId>scalatest_3</artifactId>
+      <version>${scalatest.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${surefire.mavenPlugin.version}</version>
+        <configuration>
+          <excludes>
+            <exclude>**/**.scala</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.scalatest</groupId>
+        <artifactId>scalatest-maven-plugin</artifactId>
+        <version>${scalatest.mavenPlugin.version}</version>
+        <configuration>
+          <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+        </configuration>
+        <executions>
+          <execution>
+            <id>test</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!--Add source directories for both scalac and javac-->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>${builderHelper.mavenPlugin.version}</version>
+        <executions>
+          <execution>
+            <id>add-source</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${project.basedir}/src/main/scala</source>
+                <source>${project.basedir}/target/generated-sources/jmh</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Compile Scala sources      -->
+      <plugin>
+        <groupId>net.alchim31.maven</groupId>
+        <artifactId>scala-maven-plugin</artifactId>
+        <version>${scala.mavenPlugin.version}</version>
+        <configuration>
+          <scalaVersion>${scala.version}</scalaVersion>
+          <!--                   Enable to see ATS tree -->
+          <!--                    <args>-->
+          <!--                        <arg>-Xprint:typer,inline</arg>-->
+          <!--                        <arg>-Xprint-diff</arg>-->
+          <!--                         <arg>-color:never</arg> -->
+          <!--                    </args>-->
+        </configuration>
+        <executions>
+          <execution>
+            <phase>process-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+              <goal>compile</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>scala-test-compile</id>
+            <phase>test-compile</phase>
+            <goals>
+              <goal>testCompile</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!--Invoke JMH generators to produce benchmark code -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>${exec.mavenPlugin.version}</version>
+        <executions>
+          <execution>
+            <phase>process-sources</phase>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <includePluginDependencies>true</includePluginDependencies>
+              <mainClass>org.openjdk.jmh.generators.bytecode.JmhBytecodeGenerator</mainClass>
+              <arguments>
+                <argument>${project.basedir}/target/classes/</argument>
+                <argument>${project.basedir}/target/generated-sources/jmh/</argument>
+                <argument>${project.basedir}/target/classes/</argument>
+                <argument>${jmh.generator}</argument>
+              </arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>javap</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>${java.home}/bin/javap</executable>
+              <arguments>
+                <argument>-c</argument>
+                <argument>-p</argument>
+                <argument>-classpath</argument>
+                <argument>${project.build.outputDirectory}</argument>
+                <argument>${env.JAVAP_CLASS}</argument>
+              </arguments>
+            </configuration>
+          </execution>
+        </executions>
+        <dependencies>
+          <dependency>
+            <groupId>org.openjdk.jmh</groupId>
+            <artifactId>jmh-generator-bytecode</artifactId>
+            <version>${jmh.version}</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+      <!-- Compile JMH generated code-->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${compiler.mavenPlugin.version}</version>
+        <configuration>
+          <source>${java.version}</source>
+          <target>${java.version}</target>
+        </configuration>
+      </plugin>
+      <!-- Package all the dependencies into the JAR  -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>${shade.mavenPlugin.version}</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <finalName>${jmh.jar.name}</finalName>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>org.openjdk.jmh.Main</mainClass>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+              </transformers>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                    <exclude>META-INF/*.MF</exclude>
+                    <exclude>LICENSE</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>versions-maven-plugin</artifactId>
+        <version>${versions.mevenPlugin.version}</version>
+      </plugin>
+    </plugins>
+  </build>
+</project>
